@@ -1,4 +1,18 @@
 
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    logger.info("Recibí una petición /chat")
+    data = request.get_json(force=True, silent=True)
+    if not data or "message" not in data:
+        logger.warning("Falta 'message' en el JSON recibido")
+        return jsonify({"error": "Falta campo 'message' en JSON"}), 400
+    user_input = data["message"]
+    logger.info(f"Mensaje del usuario: {user_input}")
+    
 from flask import Flask, request, jsonify
 import requests
 import os
