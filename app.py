@@ -1,17 +1,15 @@
 import logging
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 import requests
 import os
 from datetime import datetime
+import re
 
 # Configuración avanzada de logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('app.log')
-    ]
+    handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 logger.info("Iniciando aplicación Flask")
@@ -22,6 +20,9 @@ app = Flask(__name__)
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 if not OPENROUTER_API_KEY:
     logger.error("OPENROUTER_API_KEY no está configurada en las variables de entorno")
+    OPENROUTER_API_KEY = "sk-543fa126bfa44272bb83aa4eda39bcd8"  # Clave temporal para desarrollo
+    logger.warning("Usando clave de desarrollo temporal")
+
 MODEL = "deepseek-chat"
 
 # Catálogo de productos
@@ -77,66 +78,60 @@ Si no puedes responder, ofrece redirigir al equipo humano. Sé amable, claro y �
 """
     return prompt
 
-@app.route('/favicon.ico')
-def favicon():
-    """Sirve el favicon para evitar errores 404"""
-    return send_from_directory(os.path.join(app.root_path, 'static'),
-                              'favicon.ico', mimetype='image/vnd.microsoft.icon')
-
 @app.route("/")
 def home():
     """Página de inicio para la API"""
-    return f"""
+    return """
     <!DOCTYPE html>
     <html>
     <head>
         <title>VaporCity Chatbot API</title>
         <style>
-            body {{
+            body {
                 font-family: Arial, sans-serif;
                 margin: 40px;
                 text-align: center;
                 background-color: #f0f0f0;
-            }}
-            .container {{
+            }
+            .container {
                 max-width: 800px;
                 margin: 0 auto;
                 padding: 30px;
                 background: white;
                 border-radius: 10px;
                 box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }}
-            h1 {{
+            }
+            h1 {
                 color: #2c3e50;
-            }}
-            .status {{
+            }
+            .status {
                 padding: 10px;
                 background: #4CAF50;
                 color: white;
                 border-radius: 5px;
                 margin: 20px 0;
-            }}
-            .endpoints {{
+            }
+            .endpoints {
                 text-align: left;
                 margin-top: 30px;
-            }}
-            .endpoint {{
+            }
+            .endpoint {
                 background: #f9f9f9;
                 padding: 15px;
                 border-left: 4px solid #3498db;
                 margin-bottom: 15px;
                 border-radius: 0 5px 5px 0;
-            }}
-            code {{
+            }
+            code {
                 background: #eee;
                 padding: 2px 5px;
                 border-radius: 3px;
-            }}
-            .footer {{
+            }
+            .footer {
                 margin-top: 30px;
                 color: #7f8c8d;
                 font-size: 0.9em;
-            }}
+            }
         </style>
     </head>
     <body>
@@ -152,19 +147,34 @@ def home():
                 <div class="endpoint">
                     <strong>POST /chat</strong>
                     <p>Endpoint para interactuar con el chatbot.</p>
-                    <p><code>Request: {{"message": "Tu mensaje aquí"}}</code></p>
-                    <p><code>Response: {{"reply": "Respuesta del chatbot"}}</code></p>
+                    <p><code>Request: {"message": "Tu mensaje aquí"}</code></p>
+                    <p><code>Response: {"reply": "Respuesta del chatbot"}</code></p>
                 </div>
             </div>
             
             <div class="footer">
-                <p>Última actualización: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
                 <p>© 2023 VaporCity.cl - Todos los derechos reservados</p>
             </div>
         </div>
     </body>
     </html>
     """
+
+@app.route("/health")
+def health_check():
+    """Endpoint de verificación de salud"""
+    return jsonify({
+        "status": "OK",
+        "timestamp": datetime.now().isoformat(),
+        "service": "VaporCity Chatbot API"
+    }), 200
+
+def sanitize_input(text):
+    """Limpia el texto de entrada de posibles ataques"""
+    if not text:
+        return ""
+    sanitized = re.sub(r'[<>"\'\\]', '', text)
+    return sanitized[:500]
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -193,21 +203,22 @@ def chat():
         }), 400
     
     user_input = data["message"]
-    logger.info(f"Mensaje del usuario: {user_input}")
     
-    # Validar longitud del mensaje
-    if len(user_input) > 500:
-        logger.warning(f"Mensaje demasiado largo ({len(user_input)} caracteres)")
+    # Sanitizar y validar entrada
+    sanitized_input = sanitize_input(user_input)
+    if not sanitized_input or len(sanitized_input) < 2:
+        logger.warning("Entrada inválida o demasiado corta")
         return jsonify({
-            "error": "Mensaje demasiado largo",
-            "max_length": 500,
-            "actual_length": len(user_input)
+            "error": "Mensaje inválido",
+            "suggestion": "El mensaje debe tener al menos 2 caracteres válidos"
         }), 400
+    
+    logger.info(f"Mensaje del usuario: {sanitized_input}")
 
     # Crear mensajes para la API de OpenRouter
     messages = [
         {"role": "system", "content": generar_prompt_catalogo()},
-        {"role": "user", "content": user_input}
+        {"role": "user", "content": sanitized_input}
     ]
 
     try:
@@ -224,9 +235,9 @@ def chat():
             json={
                 "model": MODEL,
                 "messages": messages,
-                "max_tokens": 500  # Limitar la longitud de la respuesta
+                "max_tokens": 500
             },
-            timeout=15  # Timeout para evitar bloqueos
+            timeout=15
         )
         
         # Calcular tiempo de respuesta
@@ -248,7 +259,7 @@ def chat():
             }), 500
         
         reply = result["choices"][0]["message"]["content"]
-        logger.info(f"Respuesta generada: {reply[:100]}...")  # Log parcial
+        logger.info(f"Respuesta generada: {reply[:100]}...")
         
         return jsonify({"reply": reply})
     
@@ -276,9 +287,15 @@ def chat():
 def add_cors_headers(response):
     """Agrega headers CORS para permitir solicitudes desde cualquier origen"""
     response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS, GET'
     return response
+
+# Manejar solicitudes OPTIONS para CORS
+@app.route("/chat", methods=["OPTIONS"])
+def handle_options():
+    """Maneja solicitudes OPTIONS para CORS"""
+    return jsonify({}), 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
