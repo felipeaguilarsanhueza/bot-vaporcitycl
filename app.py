@@ -85,3 +85,9 @@ def chat():
     reply = result["choices"][0]["message"]["content"]
     return jsonify({"reply": reply})
 
+# todo tu código arriba
+
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
