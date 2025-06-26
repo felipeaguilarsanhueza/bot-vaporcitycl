@@ -2,12 +2,14 @@ import logging
 from flask import Flask, request, jsonify
 import requests
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
+from collections import defaultdict
 
-# Logging avanzado
+# Configuración avanzada de logging
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 logging.basicConfig(
-    level=logging.INFO,
+    level=LOG_LEVEL,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler()]
 )
@@ -16,9 +18,12 @@ logger.info("Iniciando aplicación Flask")
 
 app = Flask(__name__)
 
-# Clave de Kluster desde variables de entorno (recomendado en Railway)
+# Clave de Kluster desde variables de entorno
 KLUSTER_API_KEY = os.getenv("KLUSTER_API_KEY", "2b4aa715-f361-4650-8efb-15c2dced2f67")
 MODEL = "deepseek-ai/DeepSeek-V3-0324"
+
+# Configuración de sesiones
+SESSION_TIMEOUT = timedelta(minutes=30)  # Tiempo de expiración de sesiones
 
 # Catálogo simplificado
 CATALOGO = [
@@ -144,6 +149,8 @@ FAQs:
 - Pago: {FAQ['pago']}
 - Portabilidad: {FAQ['portabilidad']}
 - Técnico: {FAQ['tecnico']}
+- Salud: {FAQ['salud']}
+- Contacto: {FAQ['contacto']}
 
 Si no sabes la respuesta, sugiere contactar al equipo humano. Responde de forma breve y útil.
 """
@@ -163,14 +170,57 @@ def home():
     <p>Ejemplo con curl:<br>
     curl -X POST http://localhost:5000/chat -H "Content-Type: application/json" -d '{"message":"¿Qué vaporizador me recomiendas?"}'
     </p>
+    <p>Para reiniciar conversación: POST /reset con JSON {"session_id":"tu_sesion"}</p>
     """
 
 @app.route("/health")
 def health_check():
-    return jsonify({"status": "OK", "timestamp": datetime.now().isoformat(), "service": "VaporCity Chatbot API"}), 200
+    return jsonify({
+        "status": "OK", 
+        "timestamp": datetime.now().isoformat(), 
+        "service": "VaporCity Chatbot API",
+        "sessions": len(conversation_history)
+    }), 200
+
+# Almacenamiento de sesiones con tiempo de última actividad
+conversation_history = defaultdict(list)
+session_activity = {}
+
+# Limpiar sesiones expiradas
+def clean_expired_sessions():
+    now = datetime.now()
+    expired = []
+    for session_id, last_active in list(session_activity.items()):
+        if now - last_active > SESSION_TIMEOUT:
+            expired.append(session_id)
+    
+    for session_id in expired:
+        if session_id in conversation_history:
+            del conversation_history[session_id]
+        if session_id in session_activity:
+            del session_activity[session_id]
+        logger.info(f"Sesión expirada eliminada: {session_id}")
+
+@app.route("/reset", methods=["POST"])
+def reset_chat():
+    data = request.get_json(force=True, silent=True) or {}
+    session_id = data.get("session_id")
+    
+    if not session_id:
+        return jsonify({"error": "Falta session_id"}), 400
+    
+    if session_id in conversation_history:
+        del conversation_history[session_id]
+    if session_id in session_activity:
+        del session_activity[session_id]
+    
+    logger.info(f"Sesión reiniciada: {session_id}")
+    return jsonify({"status": "Sesión reiniciada", "session_id": session_id})
 
 @app.route("/chat", methods=["POST"])
 def chat():
+    clean_expired_sessions()  # Limpiar sesiones antes de procesar
+    
     logger.info("Petición /chat recibida")
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
     logger.info(f"IP cliente: {client_ip}")
@@ -183,12 +233,29 @@ def chat():
     if len(user_input) < 2:
         return jsonify({"error": "Mensaje demasiado corto"}), 400
 
-    logger.info(f"Mensaje usuario: {user_input}")
+    # Sanitizar y obtener session_id
+    raw_session_id = data.get("session_id", "default_" + re.sub(r'\W+', '', client_ip))
+    session_id = re.sub(r'\W+', '', raw_session_id)[:64] or "default_session"
+    
+    # Actualizar tiempo de actividad
+    session_activity[session_id] = datetime.now()
 
-    messages = [
-        {"role": "system", "content": generar_prompt_catalogo()},
-        {"role": "user", "content": user_input}
-    ]
+    # Inicializar sesión si es nueva
+    if session_id not in conversation_history:
+        conversation_history[session_id].append({
+            "role": "system",
+            "content": generar_prompt_catalogo()
+        })
+        logger.info(f"Nueva sesión iniciada: {session_id}")
+
+    # Añadir mensaje de usuario al historial
+    conversation_history[session_id].append({
+        "role": "user",
+        "content": user_input
+    })
+
+    logger.info(f"Session: {session_id} - Mensaje: {user_input}")
+    logger.debug(f"Historial actual: {conversation_history[session_id]}")
 
     try:
         start_time = datetime.now()
@@ -200,7 +267,7 @@ def chat():
             },
             json={
                 "model": MODEL,
-                "messages": messages,
+                "messages": conversation_history[session_id],
                 "max_tokens": 250,
                 "temperature": 0.5
             },
@@ -214,11 +281,24 @@ def chat():
         if "choices" not in result or not result["choices"]:
             return jsonify({"error": "Respuesta inesperada del modelo"}), 500
 
-        # *** CAMBIO AQUI: Reemplazar saltos de línea con espacios ***
         reply = result["choices"][0]["message"]["content"].replace('\n', ' ').strip()
-        # *** FIN DEL CAMBIO ***
+        
+        # Añadir respuesta al historial
+        conversation_history[session_id].append({
+            "role": "assistant",
+            "content": reply
+        })
+        
+        # Mantener sistema + últimos 4 intercambios (máximo 9 mensajes)
+        if len(conversation_history[session_id]) > 9:
+            conversation_history[session_id] = [conversation_history[session_id][0]] + conversation_history[session_id][-8:]
 
-        return jsonify({"reply": reply})
+        logger.debug(f"Historial actualizado: {conversation_history[session_id]}")
+
+        return jsonify({
+            "reply": reply,
+            "session_id": session_id  # Devolver ID para continuar conversación
+        })
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Error API Kluster: {e}")
@@ -228,15 +308,15 @@ def chat():
         return jsonify({"error": "Error interno", "details": str(e)}), 500
 
 # CORS
-ALLOWED_ORIGINS = ["https://www.vaporcity.cl","https://vaporcity.cl", "https://bio.vaporcity.cl"]
+ALLOWED_ORIGINS = ["https://www.vaporcity.cl", "https://vaporcity.cl", "https://bio.vaporcity.cl"]
 @app.after_request
 def add_cors_headers(response):
     origin = request.headers.get('Origin')
     if origin in ALLOWED_ORIGINS:
         response.headers['Access-Control-Allow-Origin'] = origin
-        response.headers['Vary'] = 'Origin'  # Mejora el cacheado en CDN
+        response.headers['Vary'] = 'Origin'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS, GET'
+    response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS, GET, DELETE'
     return response
 
 @app.route("/chat", methods=["OPTIONS"])
