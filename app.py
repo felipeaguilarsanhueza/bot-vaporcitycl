@@ -30,7 +30,7 @@ CATALOGO = [
     {
         "nombre": "Mighty+ PLUS",
         "precio": "$279.990 (oferta) / $399.990",
-        "descripcion": "Vaporizador portátil con carga rápida USB-C.",
+        "descripcion": "El Mighty+ es un vaporizador portátil de alto rendimiento que combina calentamiento híbrido (convección + conducción) para ofrecer vapor denso y sabroso desde la primera calada. Su diseño robusto y ergonómico lo hace ideal para uso diario y transporte. Fabricación alemana.",
         "caracteristicas": [
             "Calentamiento híbrido (convección + conducción)",
             "Rango de temperatura: 104 °F – 410 °F (40 °C – 210 °C)",
@@ -46,7 +46,7 @@ CATALOGO = [
     {
         "nombre": "ANIX Urano",
         "precio": "$69.990",
-        "descripcion": "Diseño metálico tipo maleta. Compatible con líquidos.",
+        "descripcion": "Urano es la nueva generación de vaporizadores portátiles para hierbas secas con flujo de aire independiente.Urano cuenta con una cámara de acero inoxidable SUS304, canales de entrada de aire independientes de alto rendimiento y una boquilla magnética con sistema de enfriamiento tipo panal. Está diseñado para ofrecer una producción de vapor superior y un sabor excepcional.",
         "caracteristicas": [
             "Batería 2200 mAh con carga rápida USB‑C (5 V/1 A)",
             "Pantalla OLED + 3 botones; vibración al alcanzar temperatura",
@@ -59,7 +59,7 @@ CATALOGO = [
     {
         "nombre": "Volcano Hybrid",
         "precio": "$599.990",
-        "descripcion": "Vaporizador de escritorio con control vía app.",
+        "descripcion": "El Volcano Hybrid es un vaporizador de escritorio que ofrece una experiencia de vapor superior gracias a su sistema de calefacción híbrido (convección + conducción). Su diseño permite inhalación mediante globo o tubo, adaptándose a las preferencias del usuario.",
         "caracteristicas": [
             "Calentamiento híbrido (convección + conducción)",
             "Rango de temperatura: 40 °C – 230 °C (104 °F – 446 °F)",
