@@ -81,7 +81,6 @@ CATALOGO = [
     }
 ]
 
-
 FAQ = {
     "envios": (
         "Realizamos envíos a todo Chile. Una vez verificado el pago, el pedido se despacha en un plazo máximo de 2 días hábiles. "
@@ -117,6 +116,15 @@ FAQ = {
         "- *Hierba buena, salvia, melisa, eucalipto* y muchas más.\n\n"
         "Usar un vaporizador te permite ajustar la temperatura para extraer compuestos específicos (terpenos, cannabinoides o aceites esenciales), "
         "lo que mejora la experiencia terapéutica y cuida tus pulmones."
+    ),
+    "contacto": (
+        "Puedes comunicarte con nosotros a través de distintos canales:\n\n"
+        "- ✉️ Correo: contacto@vaporcity.cl\n"
+        "- 📱 WhatsApp: +56 9 8256 9331\n"
+        "- 📸 Instagram: mensaje directo en [@vaporcity.cl](https://www.instagram.com/vaporcity.cl)\n"
+        "- 💬 Deja tu opinión o comentario sobre un producto en: https://tally.so/r/nPe2xx\n"
+        "- 🛒 Visita nuestra tienda online para compras con tarjeta de crédito o débito en: https://www.vaporcity.cl/productos\n\n"
+        "Respondemos los mensajes lo más rápido posible dentro del horario hábil. ¡Gracias por preferirnos!"
     )
 }
 
