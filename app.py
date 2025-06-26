@@ -130,10 +130,14 @@ def chat():
         logger.error(f"Error inesperado: {e}")
         return jsonify({"error": "Error interno", "details": str(e)}), 500
 
-# CORS simple
+# CORS
+ALLOWED_ORIGINS = ["https://www.vaporcity.cl","https://vaporcity.cl", "https://bio.vaporcity.cl"]
 @app.after_request
 def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
+    origin = request.headers.get('Origin')
+    if origin in ALLOWED_ORIGINS:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Vary'] = 'Origin'  # Mejora el cacheado en CDN
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS, GET'
     return response
