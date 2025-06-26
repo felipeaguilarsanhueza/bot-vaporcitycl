@@ -120,7 +120,10 @@ def chat():
         if "choices" not in result or not result["choices"]:
             return jsonify({"error": "Respuesta inesperada del modelo"}), 500
 
-        reply = result["choices"][0]["message"]["content"].strip()
+        # *** CAMBIO AQUI: Reemplazar saltos de línea con espacios ***
+        reply = result["choices"][0]["message"]["content"].replace('\n', ' ').strip()
+        # *** FIN DEL CAMBIO ***
+
         return jsonify({"reply": reply})
 
     except requests.exceptions.RequestException as e:
