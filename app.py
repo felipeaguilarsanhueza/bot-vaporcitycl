@@ -124,11 +124,11 @@ FAQ = {
     ),
     "contacto": (
         "Puedes comunicarte con nosotros a través de distintos canales:\n\n"
-        "- ✉️ Correo: contacto@vaporcity.cl\n"
-        "- 📱 WhatsApp: +56 9 8256 9331\n"
-        "- 📸 Instagram: mensaje directo en [@vaporcity.cl](https://www.instagram.com/vaporcity.cl)\n"
-        "- 💬 Deja tu opinión o comentario sobre un producto en: https://tally.so/r/nPe2xx\n"
-        "- 🛒 Visita nuestra tienda online para compras con tarjeta de crédito o débito en: https://www.vaporcity.cl/productos\n\n"
+        "- Correo: contacto@vaporcity.cl\n"
+        "- WhatsApp: +56 9 9855 8706\n"
+        "- Instagram: mensaje directo en [@vaporcity.cl](https://www.instagram.com/vaporcity.cl)\n"
+        "- Deja tu opinión o comentario sobre un producto en: https://tally.so/r/nPe2xx\n"
+        "- Visita nuestra tienda online para compras con tarjeta de crédito o débito en: https://www.vaporcity.cl/productos\n\n"
         "Respondemos los mensajes lo más rápido posible dentro del horario hábil. ¡Gracias por preferirnos!"
     )
 }
